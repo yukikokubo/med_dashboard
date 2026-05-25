@@ -211,6 +211,94 @@ st.markdown(
         margin: .45rem 0 .3rem .1rem;
     }
     [data-testid="stCaptionContainer"] { color: #789098; padding-top: .2rem; }
+    @media (max-width: 768px) {
+        .block-container {
+            padding: .45rem .7rem 1.1rem;
+        }
+        .hero {
+            min-height: 0;
+            padding: .95rem 1rem .9rem;
+            margin-bottom: .85rem;
+            border-radius: 15px;
+        }
+        .hero:after {
+            right: -95px;
+            top: -112px;
+            height: 235px;
+            width: 235px;
+        }
+        .hero-eyebrow {
+            max-width: 70%;
+            letter-spacing: .12em;
+            line-height: 1.45;
+        }
+        .hero-title {
+            max-width: 82%;
+            font-size: 1.28rem;
+            line-height: 1.45;
+            letter-spacing: .02em;
+        }
+        .hero-subtitle {
+            font-size: .76rem;
+            line-height: 1.55;
+        }
+        .filter-label {
+            margin: 0 0 -.15rem .05rem;
+        }
+        [data-testid="stHorizontalBlock"] {
+            flex-direction: column;
+            gap: .2rem;
+        }
+        [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+            width: 100% !important;
+            flex: 1 1 100% !important;
+            min-width: 100% !important;
+        }
+        .kpi-card {
+            padding: .7rem .9rem .67rem 1rem;
+            margin: .17rem 0;
+            border-radius: 13px;
+        }
+        .kpi-card:before {
+            height: calc(100% - 1.25rem);
+            top: .62rem;
+        }
+        .kpi-value {
+            font-size: 1.45rem;
+            margin: .13rem 0 .08rem;
+        }
+        div[data-testid="stPlotlyChart"] {
+            margin: .25rem 0 .42rem;
+            border-radius: 13px;
+        }
+        button[data-baseweb="tab"] {
+            font-size: .87rem;
+            padding-left: .65rem;
+            padding-right: .65rem;
+        }
+        .detail-heading {
+            margin-top: .65rem;
+        }
+        [data-testid="stDataFrame"] {
+            overflow-x: auto;
+            border-radius: 13px;
+        }
+        [data-testid="stDownloadButton"] button {
+            width: 100%;
+        }
+        [data-testid="stCaptionContainer"] {
+            font-size: .75rem;
+            line-height: 1.5;
+        }
+    }
+    @media (max-width: 430px) {
+        .hero-title {
+            font-size: 1.16rem;
+        }
+        .hero-subtitle {
+            max-width: 92%;
+        }
+    }
     </style>
     """,
     unsafe_allow_html=True,

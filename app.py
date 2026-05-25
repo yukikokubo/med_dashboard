@@ -90,7 +90,7 @@ st.markdown(
             radial-gradient(circle at 92% 2%, rgba(0,140,149,.11), transparent 26rem),
             linear-gradient(180deg, #F2F8F7 0%, #F6F8F8 36%, #F3F6F6 100%);
     }
-    .block-container { padding: .2rem 2.25rem 1.4rem; max-width: 1500px; }
+    .block-container { padding: .15rem 1.6rem .75rem; max-width: 1560px; }
     section[data-testid="stSidebar"] div:first-child {
         top: 0;
         height: 100vh;
@@ -98,9 +98,9 @@ st.markdown(
     .hero {
         position: relative;
         overflow: hidden;
-        min-height: 111px;
-        padding: 1.12rem 1.55rem 1rem;
-        margin-bottom: .85rem;
+        min-height: 103px;
+        padding: 1rem 1.55rem .88rem;
+        margin-bottom: .65rem;
         border-radius: 18px;
         background: linear-gradient(108deg, #102F43 0%, #174B59 60%, #087E84 100%);
         box-shadow: 0 13px 28px rgba(18,50,71,.13);
@@ -138,7 +138,7 @@ st.markdown(
         font-size: .68rem;
         font-weight: 700;
         letter-spacing: .17em;
-        margin: .4rem 0 -.5rem .1rem;
+        margin: .25rem 0 -.55rem .1rem;
     }
     [data-testid="stHorizontalBlock"]:has(.kpi-card) { gap: .95rem; }
     .kpi-card {
@@ -148,7 +148,7 @@ st.markdown(
         border: 1px solid #E0EAEA;
         border-radius: 15px;
         padding: .82rem 1rem .76rem 1.12rem;
-        margin: .4rem 0 .6rem;
+        margin: .3rem 0 .45rem;
         box-shadow: 0 3px 15px rgba(18,50,71,.045);
     }
     .kpi-card:before {
@@ -178,11 +178,37 @@ st.markdown(
         border-radius: 10px;
     }
     div[data-testid="stPlotlyChart"] {
+        box-sizing: border-box;
+        overflow: hidden;
         background: white;
         border: 1px solid #E0EAEA;
         border-radius: 15px;
-        padding: .05rem .18rem;
+        padding: 0;
         box-shadow: 0 3px 15px rgba(18,50,71,.042);
+    }
+    div[data-testid="stPlotlyChart"] > div {
+        max-width: 100%;
+        overflow: hidden;
+        border-radius: inherit;
+    }
+    button[data-baseweb="tab"] {
+        color: #607883;
+        font-weight: 700;
+        letter-spacing: .04em;
+    }
+    button[data-baseweb="tab"][aria-selected="true"] { color: #008C95; }
+    [data-testid="stDataFrame"] {
+        box-sizing: border-box;
+        border: 1px solid #E0EAEA;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 3px 15px rgba(18,50,71,.042);
+    }
+    .detail-heading {
+        color: #123247;
+        font-size: .95rem;
+        font-weight: 700;
+        margin: .45rem 0 .3rem .1rem;
     }
     [data-testid="stCaptionContainer"] { color: #789098; padding-top: .2rem; }
     </style>
@@ -217,10 +243,11 @@ with filter_cols[1]:
     selected_areas = st.multiselect("治療領域", area_options, placeholder="すべて")
 with filter_cols[2]:
     product_source = sales[sales["TherapeuticArea"].isin(selected_areas)] if selected_areas else sales
-    products_available = product_source["ProductName"].unique()
-    selected_products = st.multiselect("製品", sorted(products_available), placeholder="すべて")
+    products_available = sorted(product_source["ProductName"].unique())
+    selected_products = st.multiselect("製品", products_available, placeholder="すべて")
 with filter_cols[3]:
-    selected_regions = st.multiselect("地域", sales["RegionName"].unique(), placeholder="すべて")
+    region_options = sales.sort_values("RegionSortOrder")["RegionName"].drop_duplicates().tolist()
+    selected_regions = st.multiselect("地域", region_options, placeholder="すべて")
 
 
 def apply_common_filters(dataframe: pd.DataFrame) -> pd.DataFrame:
@@ -244,133 +271,274 @@ attainment = actual / budget * 100 if budget else 0
 yoy = percent_change(actual, prior_actual)
 units = current["UnitQuantity"].sum()
 
-kpi_cols = st.columns(4)
-with kpi_cols[0]:
-    kpi_card("NET SALES", yen_billion(actual), f"{yoy:+.1f}% 前年比", "positive" if yoy >= 0 else "negative", TEAL)
-with kpi_cols[1]:
-    kpi_card(
-        "PLAN ATTAINMENT",
-        f"{attainment:.1f}%",
-        f"{attainment - 100:+.1f} pt vs plan",
-        "positive" if attainment >= 100 else "warning",
-        GREEN if attainment >= 100 else AMBER,
-    )
-with kpi_cols[2]:
-    kpi_card(
-        "YEAR ON YEAR",
-        f"{yoy:+.1f}%",
-        f"{yen_billion(abs(actual - prior_actual))} {'増加' if yoy >= 0 else '減少'}",
-        "positive" if yoy >= 0 else "negative",
-        GREEN if yoy >= 0 else CORAL,
-    )
-with kpi_cols[3]:
-    kpi_card("SALES VOLUME", f"{units:,} 箱", "年度累計 出荷数量", "", "#337C9C")
+summary_tab, detail_tab = st.tabs(["売上サマリー", "製品・地域分析"])
 
-monthly = (
-    current.groupby(["FiscalMonthNumber", "MonthNameJP"], as_index=False)[["SalesAmountJPY", "BudgetAmountJPY"]]
-    .sum()
-    .sort_values("FiscalMonthNumber")
-)
-prior_monthly = (
-    prior.groupby("FiscalMonthNumber", as_index=False)["SalesAmountJPY"]
-    .sum()
-    .rename(columns={"SalesAmountJPY": "PriorSalesAmountJPY"})
-)
-monthly = monthly.merge(prior_monthly, on="FiscalMonthNumber", how="left")
-monthly["Actual"] = monthly["SalesAmountJPY"] / 100_000_000
-monthly["Budget"] = monthly["BudgetAmountJPY"] / 100_000_000
-monthly["Prior"] = monthly["PriorSalesAmountJPY"] / 100_000_000
-
-top_left, top_right = st.columns([1.65, 1])
-with top_left:
-    trend = go.Figure()
-    trend.add_bar(x=monthly["MonthNameJP"], y=monthly["Actual"], name="実績", marker_color=TEAL)
-    trend.add_trace(
-        go.Scatter(x=monthly["MonthNameJP"], y=monthly["Budget"], name="計画", line=dict(color=AMBER, width=2.3))
-    )
-    trend.add_trace(
-        go.Scatter(x=monthly["MonthNameJP"], y=monthly["Prior"], name="前年", line=dict(color=LIGHT_BLUE, width=2))
-    )
-    trend.update_layout(title="月次売上 実績 vs 計画 vs 前年", yaxis_title="売上（億円）", barmode="group")
-    st.plotly_chart(chart_layout(trend, 315), use_container_width=True)
-
-with top_right:
-    product_sales = current.groupby("ProductName", as_index=False)["SalesAmountJPY"].sum()
-    prior_product = prior.groupby("ProductName", as_index=False)["SalesAmountJPY"].sum()
-    product_sales = product_sales.merge(prior_product, on="ProductName", how="left", suffixes=("", "_Prior"))
-    product_sales["前年比"] = (
-        product_sales["SalesAmountJPY"] / product_sales["SalesAmountJPY_Prior"].replace(0, pd.NA) - 1
-    ) * 100
-    product_sales["売上（億円）"] = product_sales["SalesAmountJPY"] / 100_000_000
-    product_sales = product_sales.sort_values("売上（億円）", ascending=True)
-    product_chart = px.bar(
-        product_sales,
-        x="売上（億円）",
-        y="ProductName",
-        orientation="h",
-        title="製品別売上ランキング",
-        color="前年比",
-        color_continuous_scale=[CORAL, "#EBEFF0", GREEN],
-        color_continuous_midpoint=0,
-    )
-    product_chart.update_layout(coloraxis_colorbar=dict(title="前年比%"))
-    st.plotly_chart(chart_layout(product_chart, 315), use_container_width=True)
-
-bottom_left, bottom_right = st.columns([1, 1])
-with bottom_left:
-    region = current.groupby(["RegionName", "RegionSortOrder"], as_index=False)[
-        ["SalesAmountJPY", "BudgetAmountJPY"]
-    ].sum()
-    region["達成率"] = region["SalesAmountJPY"] / region["BudgetAmountJPY"] * 100
-    region = region.sort_values("達成率")
-    region_chart = px.bar(
-        region,
-        x="達成率",
-        y="RegionName",
-        orientation="h",
-        title="地域別 計画達成率",
-        color="達成率",
-        color_continuous_scale=[CORAL, "#EBDCB8", GREEN],
-        color_continuous_midpoint=100,
-    )
-    region_chart.add_vline(x=100, line_dash="dot", line_color=NAVY)
-    region_chart.update_layout(coloraxis_showscale=False, xaxis_ticksuffix="%")
-    st.plotly_chart(chart_layout(region_chart, 290), use_container_width=True)
-
-with bottom_right:
-    area = current.groupby("TherapeuticArea", as_index=False)["SalesAmountJPY"].sum()
-    area["売上（億円）"] = area["SalesAmountJPY"] / 100_000_000
-    area = area.sort_values("売上（億円）", ascending=False)
-    area_chart = go.Figure(
-        go.Pie(
-            labels=area["TherapeuticArea"],
-            values=area["売上（億円）"],
-            hole=0.65,
-            domain=dict(x=[0.0, 0.70], y=[0.0, 1.0]),
-            sort=False,
-            direction="clockwise",
-            marker=dict(colors=DONUT_COLORS, line=dict(color="white", width=3)),
-            textinfo="percent",
-            textfont=dict(size=12, color="white"),
-            hovertemplate="<b>%{label}</b><br>売上: %{value:.1f} 億円<br>構成比: %{percent}<extra></extra>",
+with summary_tab:
+    kpi_cols = st.columns(4)
+    with kpi_cols[0]:
+        kpi_card(
+            "NET SALES",
+            yen_billion(actual),
+            f"{yoy:+.1f}% 前年比",
+            "positive" if yoy >= 0 else "negative",
+            TEAL,
         )
+    with kpi_cols[1]:
+        kpi_card(
+            "PLAN ATTAINMENT",
+            f"{attainment:.1f}%",
+            f"{attainment - 100:+.1f} pt vs plan",
+            "positive" if attainment >= 100 else "warning",
+            GREEN if attainment >= 100 else AMBER,
+        )
+    with kpi_cols[2]:
+        kpi_card(
+            "YEAR ON YEAR",
+            f"{yoy:+.1f}%",
+            f"{yen_billion(abs(actual - prior_actual))} {'増加' if yoy >= 0 else '減少'}",
+            "positive" if yoy >= 0 else "negative",
+            GREEN if yoy >= 0 else CORAL,
+        )
+    with kpi_cols[3]:
+        kpi_card("SALES VOLUME", f"{units:,} 箱", "年度累計 出荷数量", "", "#337C9C")
+
+    monthly = (
+        current.groupby(["FiscalMonthNumber", "MonthNameJP"], as_index=False)[["SalesAmountJPY", "BudgetAmountJPY"]]
+        .sum()
+        .sort_values("FiscalMonthNumber")
     )
-    area_chart.update_layout(
-        title="治療領域別 売上構成",
-        showlegend=True,
-        annotations=[
-            dict(
-                text=f"<span style='font-size:12px;color:#69828B'>TOTAL SALES</span><br>"
-                f"<b>{actual / 100_000_000:.1f}</b><span style='font-size:12px'> 億円</span>",
-                x=0.35,
-                y=0.5,
-                font=dict(size=22, color=NAVY, family="Noto Sans JP, sans-serif"),
-                showarrow=False,
+    prior_monthly = (
+        prior.groupby("FiscalMonthNumber", as_index=False)["SalesAmountJPY"]
+        .sum()
+        .rename(columns={"SalesAmountJPY": "PriorSalesAmountJPY"})
+    )
+    monthly = monthly.merge(prior_monthly, on="FiscalMonthNumber", how="left")
+    monthly["Actual"] = monthly["SalesAmountJPY"] / 100_000_000
+    monthly["Budget"] = monthly["BudgetAmountJPY"] / 100_000_000
+    monthly["Prior"] = monthly["PriorSalesAmountJPY"] / 100_000_000
+
+    top_left, top_right = st.columns([1.65, 1])
+    with top_left:
+        trend = go.Figure()
+        trend.add_bar(x=monthly["MonthNameJP"], y=monthly["Actual"], name="実績", marker_color=TEAL)
+        trend.add_trace(
+            go.Scatter(x=monthly["MonthNameJP"], y=monthly["Budget"], name="計画", line=dict(color=AMBER, width=2.3))
+        )
+        trend.add_trace(
+            go.Scatter(x=monthly["MonthNameJP"], y=monthly["Prior"], name="前年", line=dict(color=LIGHT_BLUE, width=2))
+        )
+        trend.update_layout(title="月次売上 実績 vs 計画 vs 前年", yaxis_title="売上（億円）", barmode="group")
+        st.plotly_chart(chart_layout(trend, 295), width="stretch")
+
+    with top_right:
+        product_sales = current.groupby("ProductName", as_index=False)["SalesAmountJPY"].sum()
+        prior_product = prior.groupby("ProductName", as_index=False)["SalesAmountJPY"].sum()
+        product_sales = product_sales.merge(prior_product, on="ProductName", how="left", suffixes=("", "_Prior"))
+        product_sales["前年比"] = (
+            product_sales["SalesAmountJPY"] / product_sales["SalesAmountJPY_Prior"].replace(0, pd.NA) - 1
+        ) * 100
+        product_sales["売上（億円）"] = product_sales["SalesAmountJPY"] / 100_000_000
+        product_sales = product_sales.sort_values("売上（億円）", ascending=True)
+        product_chart = px.bar(
+            product_sales,
+            x="売上（億円）",
+            y="ProductName",
+            orientation="h",
+            title="製品別売上ランキング",
+            color="前年比",
+            color_continuous_scale=[CORAL, "#EBEFF0", GREEN],
+            color_continuous_midpoint=0,
+        )
+        product_chart.update_layout(coloraxis_colorbar=dict(title="前年比%"))
+        st.plotly_chart(chart_layout(product_chart, 295), width="stretch")
+
+    bottom_left, bottom_right = st.columns([1, 1])
+    with bottom_left:
+        region = current.groupby(["RegionName", "RegionSortOrder"], as_index=False)[
+            ["SalesAmountJPY", "BudgetAmountJPY"]
+        ].sum()
+        region["達成率"] = region["SalesAmountJPY"] / region["BudgetAmountJPY"] * 100
+        region = region.sort_values("達成率")
+        region_chart = px.bar(
+            region,
+            x="達成率",
+            y="RegionName",
+            orientation="h",
+            title="地域別 計画達成率",
+            color="達成率",
+            color_continuous_scale=[CORAL, "#EBDCB8", GREEN],
+            color_continuous_midpoint=100,
+        )
+        region_chart.add_vline(x=100, line_dash="dot", line_color=NAVY)
+        region_chart.update_layout(coloraxis_showscale=False, xaxis_ticksuffix="%")
+        st.plotly_chart(chart_layout(region_chart, 270), width="stretch")
+
+    with bottom_right:
+        area = current.groupby("TherapeuticArea", as_index=False)["SalesAmountJPY"].sum()
+        area["売上（億円）"] = area["SalesAmountJPY"] / 100_000_000
+        area = area.sort_values("売上（億円）", ascending=False)
+        area_chart = go.Figure(
+            go.Pie(
+                labels=area["TherapeuticArea"],
+                values=area["売上（億円）"],
+                hole=0.65,
+                domain=dict(x=[0.0, 0.70], y=[0.0, 1.0]),
+                sort=False,
+                direction="clockwise",
+                marker=dict(colors=DONUT_COLORS, line=dict(color="white", width=3)),
+                textinfo="percent",
+                textfont=dict(size=12, color="white"),
+                hovertemplate="<b>%{label}</b><br>売上: %{value:.1f} 億円<br>構成比: %{percent}<extra></extra>",
             )
-        ],
+        )
+        area_chart.update_layout(
+            title="治療領域別 売上構成",
+            showlegend=True,
+            annotations=[
+                dict(
+                    text=f"<span style='font-size:12px;color:#69828B'>TOTAL SALES</span><br>"
+                    f"<b>{actual / 100_000_000:.1f}</b><span style='font-size:12px'> 億円</span>",
+                    x=0.35,
+                    y=0.5,
+                    font=dict(size=22, color=NAVY, family="Noto Sans JP, sans-serif"),
+                    showarrow=False,
+                )
+            ],
+        )
+        area_chart = chart_layout(area_chart, 270)
+        area_chart.update_layout(legend=dict(orientation="v", yanchor="middle", y=0.48, xanchor="left", x=1.01))
+        st.plotly_chart(area_chart, width="stretch")
+
+with detail_tab:
+    detail_left, detail_right = st.columns([1, 1])
+
+    product_detail = current.groupby(["ProductName", "TherapeuticArea"], as_index=False)[
+        ["SalesAmountJPY", "BudgetAmountJPY", "UnitQuantity"]
+    ].sum()
+    prior_detail = (
+        prior.groupby("ProductName", as_index=False)["SalesAmountJPY"]
+        .sum()
+        .rename(columns={"SalesAmountJPY": "PriorSalesAmountJPY"})
     )
-    area_chart = chart_layout(area_chart, 290)
-    area_chart.update_layout(legend=dict(orientation="v", yanchor="middle", y=0.48, xanchor="left", x=1.01))
-    st.plotly_chart(area_chart, use_container_width=True)
+    product_detail = product_detail.merge(prior_detail, on="ProductName", how="left")
+    product_detail["売上（億円）"] = product_detail["SalesAmountJPY"] / 100_000_000
+    product_detail["計画（億円）"] = product_detail["BudgetAmountJPY"] / 100_000_000
+    product_detail["達成率（%）"] = product_detail["SalesAmountJPY"] / product_detail["BudgetAmountJPY"] * 100
+    product_detail["前年比（%）"] = (
+        product_detail["SalesAmountJPY"] / product_detail["PriorSalesAmountJPY"].replace(0, pd.NA) - 1
+    ) * 100
+    product_detail = product_detail.sort_values("達成率（%）", ascending=False)
+
+    with detail_left:
+        st.markdown('<div class="detail-heading">製品別パフォーマンス</div>', unsafe_allow_html=True)
+        st.dataframe(
+            product_detail[
+                ["ProductName", "TherapeuticArea", "売上（億円）", "計画（億円）", "達成率（%）", "前年比（%）"]
+            ],
+            column_config={
+                "ProductName": "製品",
+                "TherapeuticArea": "治療領域",
+                "売上（億円）": st.column_config.NumberColumn("売上（億円）", format="%.1f"),
+                "計画（億円）": st.column_config.NumberColumn("計画（億円）", format="%.1f"),
+                "達成率（%）": st.column_config.ProgressColumn("達成率", min_value=0, max_value=130, format="%.1f%%"),
+                "前年比（%）": st.column_config.NumberColumn("前年比", format="%+.1f%%"),
+            },
+            hide_index=True,
+            width="stretch",
+            height=344,
+        )
+
+    with detail_right:
+        st.markdown('<div class="detail-heading">地域 x 製品 売上ヒートマップ</div>', unsafe_allow_html=True)
+        heatmap_source = current.groupby(["RegionName", "RegionSortOrder", "ProductName"], as_index=False)[
+            "SalesAmountJPY"
+        ].sum()
+        heatmap_source["売上（億円）"] = heatmap_source["SalesAmountJPY"] / 100_000_000
+        heatmap = (
+            heatmap_source.sort_values("RegionSortOrder")
+            .pivot(index="RegionName", columns="ProductName", values="売上（億円）")
+            .fillna(0)
+        )
+        visible_regions = [region for region in region_options if region in heatmap.index]
+        visible_products = [product for product in products_available if product in heatmap.columns]
+        heatmap = heatmap.reindex(index=visible_regions, columns=visible_products, fill_value=0)
+        heatmap_max = float(heatmap.to_numpy().max()) if not heatmap.empty else 0.0
+        label_threshold = heatmap_max * 0.58
+        heatmap_chart = go.Figure(
+            data=go.Heatmap(
+                z=heatmap.to_numpy(),
+                x=heatmap.columns,
+                y=heatmap.index,
+                colorscale=[
+                    [0.0, "#F4F8F8"],
+                    [0.35, "#D2E9E6"],
+                    [0.72, "#43A4A7"],
+                    [1.0, "#17616E"],
+                ],
+                zmin=0,
+                zmax=heatmap_max,
+                hovertemplate="地域: %{y}<br>製品: %{x}<br>売上: %{z:.1f} 億円<extra></extra>",
+                colorbar=dict(
+                    title=dict(text="売上（億円）", side="top"),
+                    thickness=11,
+                    len=0.75,
+                    x=1.02,
+                    xanchor="left",
+                    y=0.5,
+                    yanchor="middle",
+                    outlinewidth=0,
+                ),
+            )
+        )
+        heatmap_chart.update_xaxes(
+            title_text="",
+            side="top",
+            tickangle=0,
+            showgrid=False,
+            showline=False,
+            ticks="",
+        )
+        heatmap_chart.update_yaxes(
+            title_text="",
+            autorange="reversed",
+            showgrid=False,
+            showline=False,
+            ticks="",
+            zeroline=False,
+        )
+        heatmap_chart.update_layout(
+            height=344,
+            margin=dict(l=16, r=88, t=16, b=34),
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            font=dict(family="Noto Sans JP, sans-serif", color=NAVY, size=12),
+            hoverlabel=dict(bgcolor="white", bordercolor="#D9E6E8"),
+            showlegend=False,
+            annotations=[
+                dict(
+                    x=product,
+                    y=region_name,
+                    text=f"{value:.1f}",
+                    showarrow=False,
+                    font=dict(color="white" if value >= label_threshold else NAVY, size=12),
+                )
+                for region_name, row in heatmap.iterrows()
+                for product, value in row.items()
+            ],
+        )
+        st.plotly_chart(heatmap_chart, width="stretch")
+
+    detail_export = current.groupby(
+        ["FiscalYear", "ProductName", "TherapeuticArea", "RegionName"], as_index=False
+    )[["SalesAmountJPY", "BudgetAmountJPY", "UnitQuantity"]].sum()
+    detail_export["PlanAttainmentPct"] = (
+        detail_export["SalesAmountJPY"] / detail_export["BudgetAmountJPY"] * 100
+    ).round(1)
+    st.download_button(
+        "詳細データをCSVダウンロード",
+        data=detail_export.to_csv(index=False).encode("utf-8-sig"),
+        file_name=f"sales_detail_FY{selected_fy}.csv",
+        mime="text/csv",
+    )
 
 st.caption("※ 本画面は架空の製品・売上データを使用したPower BI実装検討用モックアップです。")

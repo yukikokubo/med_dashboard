@@ -141,6 +141,10 @@ st.markdown(
         margin: .25rem 0 -.55rem .1rem;
     }
     [data-testid="stHorizontalBlock"]:has(.kpi-card) { gap: .95rem; }
+    .st-key-summary_charts,
+    .st-key-summary_charts > [data-testid="stVerticalBlock"] {
+        gap: .55rem !important;
+    }
     .kpi-card {
         --accent: #008C95;
         position: relative;
@@ -254,9 +258,15 @@ st.markdown(
             flex: 1 1 100% !important;
             min-width: 100% !important;
         }
+        [data-testid="stHorizontalBlock"]:has(div[data-testid="stPlotlyChart"]) {
+            gap: .65rem;
+        }
+        [data-testid="stHorizontalBlock"]:has(.kpi-card) {
+            gap: .45rem;
+        }
         .kpi-card {
             padding: .7rem .9rem .67rem 1rem;
-            margin: .17rem 0;
+            margin: .32rem 0;
             border-radius: 13px;
         }
         .kpi-card:before {
@@ -267,9 +277,20 @@ st.markdown(
             font-size: 1.45rem;
             margin: .13rem 0 .08rem;
         }
+        div[data-testid="stElementContainer"]:has(div[data-testid="stPlotlyChart"]) {
+            margin: 0;
+            overflow: hidden !important;
+            width: 100% !important;
+        }
         div[data-testid="stPlotlyChart"] {
-            margin: .25rem 0 .42rem;
+            margin: 0;
             border-radius: 13px;
+            width: 100% !important;
+            max-width: none;
+        }
+        div[data-testid="stPlotlyChart"] > div {
+            width: 100% !important;
+            max-width: none;
         }
         button[data-baseweb="tab"] {
             font-size: .87rem;
@@ -405,7 +426,8 @@ with summary_tab:
     monthly["Budget"] = monthly["BudgetAmountJPY"] / 100_000_000
     monthly["Prior"] = monthly["PriorSalesAmountJPY"] / 100_000_000
 
-    top_left, top_right = st.columns([1.65, 1])
+    charts_container = st.container(key="summary_charts")
+    top_left, top_right = charts_container.columns([1.65, 1])
     with top_left:
         trend = go.Figure()
         trend.add_bar(x=monthly["MonthNameJP"], y=monthly["Actual"], name="実績", marker_color=TEAL)
@@ -440,7 +462,7 @@ with summary_tab:
         product_chart.update_layout(coloraxis_colorbar=dict(title="前年比%"))
         st.plotly_chart(chart_layout(product_chart, 295), width="stretch")
 
-    bottom_left, bottom_right = st.columns([1, 1])
+    bottom_left, bottom_right = charts_container.columns([1, 1])
     with bottom_left:
         region = current.groupby(["RegionName", "RegionSortOrder"], as_index=False)[
             ["SalesAmountJPY", "BudgetAmountJPY"]

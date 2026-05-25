@@ -78,12 +78,23 @@ st.markdown(
     """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Shippori+Mincho:wght@500;600&display=swap');
+    [data-testid="stHeader"] {
+        background: transparent;
+        height: 0;
+    }
+    [data-testid="stHeader"] > div {
+        display: none;
+    }
     .stApp {
         background:
             radial-gradient(circle at 92% 2%, rgba(0,140,149,.11), transparent 26rem),
             linear-gradient(180deg, #F2F8F7 0%, #F6F8F8 36%, #F3F6F6 100%);
     }
-    .block-container { padding: 1.25rem 2.25rem 1.4rem; max-width: 1500px; }
+    .block-container { padding: .2rem 2.25rem 1.4rem; max-width: 1500px; }
+    section[data-testid="stSidebar"] div:first-child {
+        top: 0;
+        height: 100vh;
+    }
     .hero {
         position: relative;
         overflow: hidden;
